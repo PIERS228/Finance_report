@@ -1,1 +1,61 @@
 
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票財務報告分析工具</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <h1>股票財務報告分析工具</h1>
+        
+        <div class="control-panel">
+            <label for="stock-select">選擇股票: </label>
+            <select id="stock-select">
+                <option value="">-- 請選擇 --</option>
+                <!-- 股票選項將由JavaScript動態生成 -->
+            </select>
+            <div id="stock-info" class="stock-info"></div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="balance_sheet">資產負債表</div>
+            <div class="tab" data-tab="income_statement">利潤表</div>
+            <div class="tab" data-tab="cash_flow">現金流量表</div>
+        </div>
+        
+        <div id="balance_sheet" class="tab-content active">
+            <p>請選擇股票代碼查看數據</p>
+        </div>
+        
+        <div id="income_statement" class="tab-content">
+            <p>請選擇股票代碼查看數據</p>
+        </div>
+        
+        <div id="cash_flow" class="tab-content">
+            <p>請選擇股票代碼查看數據</p>
+        </div>
+        
+        <!-- AI 分析部分 -->
+        <div class="ai-chat">
+            <h2>財務分析助手</h2>
+            <p>詢問有關當前股票的財務問題</p>
+            
+            <div class="chat-container" id="chat-container">
+                <div class="message ai-message">
+                    您好！我是財務分析助手。請先選擇股票代碼，然後我可以幫助您分析財務數據。
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <input type="text" id="chat-input" placeholder="輸入您的財務問題..." disabled>
+                <button id="send-btn" disabled>發送</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="scripts/main.js"></script>
+</body>
+</html>
