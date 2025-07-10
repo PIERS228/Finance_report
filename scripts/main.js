@@ -1,109 +1,108 @@
-
-// 主應用程序
 document.addEventListener('DOMContentLoaded', function() {
-    // 初始化變量
-    let financialData = {};
-    let availableStocks = [];
-    
-    // DOM元素
-    const stockSelect = document.getElementById('stock-select');
-    const stockInfo = document.getElementById('stock-info');
-    const chatInput = document.getElementById('chat-input');
-    const sendBtn = document.getElementById('send-btn');
-    
-    // 初始化應用
-    initApp();
-    
-    // 初始化應用程序
-    function initApp() {
-        discoverAvailableStocks();
-        setupEventListeners();
-    }
-    
-    // 發現可用的股票數據文件
-    function discoverAvailableStocks() {
-        // 這裡我們假設文件名格式為: [股票代碼]_[報表類型].csv
-        // 例如: 000001_balance_sheet.csv
-        
-        // 在實際應用中，這裡應該從服務器獲取文件列表
-        // 為了演示，我們假設已經知道有以下文件:
-        availableStocks = ['000001', '000002']; // 替換為您實際的股票代碼
-        
-        // 填充股票選擇下拉框
-        availableStocks.forEach(stock => {
-            const option = document.createElement('option');
-            option.value = stock;
-            option.textContent = stock;
-            stockSelect.appendChild(option);
-        });
-    }
-    
-    // 設置事件監聽器
-    function setupEventListeners() {
-        // 股票選擇變化
-        stockSelect.addEventListener('change', function() {
-            const stockCode = this.value;
-            if (stockCode) {
-                loadFinancialData(stockCode);
-            }
-        });
-        
-        // 標籤頁切換
-        document.querySelectorAll('.tab').forEach(tab => {
-            tab.addEventListener('click', function() {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                
-                const tabId = this.getAttribute('data-tab');
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                document.getElementById(tabId).classList.add('active');
+    // ... 其他不变代码 ...
+
+    // 发现可用的股票数据文件
+    async function discoverAvailableStocks() {
+        try {
+            // 在实际部署中，这里应该从服务器API获取文件列表
+            // 这里我们模拟一个文件列表
+            const simulatedFiles = [
+                'W_01270_balance_sheet_年度.csv',
+                'W_01270_cash_flow_年度.csv',
+                'W_01270_income_statement_年度.csv',
+                '美团-W_03690_balance_sheet_年度.csv',
+                '美团-W_03690_cash_flow_年度.csv',
+                '美团-W_03690_income_statement_年度.csv'
+            ];
+            
+            // 解析文件名，提取股票代码和名称
+            const stockMap = {};
+            
+            simulatedFiles.forEach(filename => {
+                // 解析文件名格式： [名称-]W_股票代码_报表类型_年度.csv
+                const match = filename.match(/^(?:([^-]+)-)?W_(\d+)_(balance_sheet|cash_flow|income_statement)_年度\.csv$/);
+                if (match) {
+                    const stockName = match[1] || '';
+                    const stockCode = match[2];
+                    const reportType = match[3];
+                    
+                    if (!stockMap[stockCode]) {
+                        stockMap[stockCode] = {
+                            code: stockCode,
+                            name: stockName,
+                            hasBalanceSheet: false,
+                            hasCashFlow: false,
+                            hasIncomeStatement: false
+                        };
+                    }
+                    
+                    if (reportType === 'balance_sheet') stockMap[stockCode].hasBalanceSheet = true;
+                    if (reportType === 'cash_flow') stockMap[stockCode].hasCashFlow = true;
+                    if (reportType === 'income_statement') stockMap[stockCode].hasIncomeStatement = true;
+                }
             });
-        });
-        
-        // 聊天功能
-        sendBtn.addEventListener('click', sendMessage);
-        chatInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendMessage();
-            }
-        });
+            
+            // 只保留有三种报表完整的股票
+            availableStocks = Object.values(stockMap).filter(stock => 
+                stock.hasBalanceSheet && stock.hasCashFlow && stock.hasIncomeStatement
+            );
+            
+            // 填充股票选择下拉框
+            stockSelect.innerHTML = '<option value="">-- 请选择 --</option>';
+            availableStocks.forEach(stock => {
+                const option = document.createElement('option');
+                option.value = stock.code;
+                option.textContent = stock.name ? `${stock.name} (${stock.code})` : stock.code;
+                stockSelect.appendChild(option);
+            });
+            
+        } catch (error) {
+            console.error('发现可用股票失败:', error);
+        }
     }
-    
-    // 加載財務數據
+
+    // 加载财务数据
     async function loadFinancialData(stockCode) {
         try {
-            // 顯示加載狀態
-            stockInfo.textContent = `正在加載 ${stockCode} 的財務數據...`;
+            // 显示加载状态
+            stockInfo.textContent = `正在加载 ${stockCode} 的财务数据...`;
             
-            // 加載三種報表
+            // 获取股票名称（如果有）
+            const stockName = availableStocks.find(s => s.code === stockCode)?.name || '';
+            
+            // 构建文件名
+            const prefix = stockName ? `${stockName}-W_${stockCode}` : `W_${stockCode}`;
+            
+            // 加载三种报表
             const [balanceSheet, incomeStatement, cashFlow] = await Promise.all([
-                loadCSVData(`${stockCode}_balance_sheet.csv`),
-                loadCSVData(`${stockCode}_income_statement.csv`),
-                loadCSVData(`${stockCode}_cash_flow.csv`)
+                loadCSVData(`${prefix}_balance_sheet_年度.csv`),
+                loadCSVData(`${prefix}_income_statement_年度.csv`),
+                loadCSVData(`${prefix}_cash_flow_年度.csv`)
             ]);
             
-            // 處理數據
+            // 处理数据
             financialData[stockCode] = {
                 balance_sheet: processData(balanceSheet),
                 income_statement: processData(incomeStatement),
-                cash_flow: processData(cashFlow)
+                cash_flow: processData(cashFlow),
+                name: stockName
             };
             
             // 更新UI
             updateDisplay(stockCode);
-            stockInfo.textContent = `當前查看: ${stockCode}`;
+            stockInfo.textContent = `当前查看: ${stockName || ''} ${stockCode}`;
             
-            // 啟用聊天功能
+            // 启用聊天功能
             chatInput.disabled = false;
             sendBtn.disabled = false;
             
         } catch (error) {
-            console.error('加載財務數據失敗:', error);
-            stockInfo.textContent = `加載 ${stockCode} 數據失敗: ${error.message}`;
+            console.error('加载财务数据失败:', error);
+            stockInfo.textContent = `加载 ${stockCode} 数据失败: ${error.message}`;
         }
     }
-    
-    // 從CSV文件加載數據
+
+    // 从CSV文件加载数据
     async function loadCSVData(filename) {
         try {
             const response = await fetch(filename);
@@ -111,18 +110,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(`文件 ${filename} 不存在`);
             }
             
-            const csvText = await response.text();
+            // 尝试不同编码
+            let csvText;
+            try {
+                csvText = await response.text();
+            } catch (e) {
+                // 如果UTF-8失败，尝试GBK解码
+                const buffer = await response.arrayBuffer();
+                const decoder = new TextDecoder('gbk');
+                csvText = decoder.decode(buffer);
+            }
+            
             return parseCSV(csvText);
         } catch (error) {
-            console.error(`加載CSV文件 ${filename} 失敗:`, error);
+            console.error(`加载CSV文件 ${filename} 失败:`, error);
             throw error;
         }
     }
-    
-    // 解析CSV數據
+
+    // 解析CSV数据
     function parseCSV(csvText) {
-        const lines = csvText.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
+        const lines = csvText.split('\n').filter(line => line.trim() !== '');
+        if (lines.length < 2) return [];
+        
+        // 处理可能的BOM字符
+        const firstLine = lines[0];
+        let headers = firstLine.split(',');
+        if (headers[0].charCodeAt(0) === 0xFEFF) {
+            headers[0] = headers[0].substring(1);
+        }
+        headers = headers.map(h => h.trim());
         
         return lines.slice(1).map(line => {
             const values = line.split(',');
@@ -133,22 +150,52 @@ document.addEventListener('DOMContentLoaded', function() {
             return row;
         });
     }
-    
-    // 處理原始數據
+
+    // 处理原始数据
     function processData(rawData) {
         if (!rawData || rawData.length === 0) return [];
         
         // 提取所有年份
         const years = [...new Set(rawData.map(item => {
-            const date = new Date(item.REPORT_DATE);
-            return date.getFullYear();
-        }))].sort();
+            if (!item.REPORT_DATE) return null;
+            const dateStr = item.REPORT_DATE;
+            let year;
+            
+            // 尝试不同日期格式
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                year = new Date(dateStr).getFullYear();
+            } else if (dateStr.match(/^\d{4}$/)) {
+                year = parseInt(dateStr);
+            } else if (dateStr.match(/^\d{4}年$/)) {
+                year = parseInt(dateStr);
+            } else {
+                console.warn('未知的日期格式:', dateStr);
+                return null;
+            }
+            
+            return year;
+        }).filter(y => y !== null))].sort();
         
-        // 按項目名稱分組
+        // 按项目名称分组
         const items = {};
         rawData.forEach(row => {
-            const year = new Date(row.REPORT_DATE).getFullYear();
-            const amount = parseFloat(row.AMOUNT) || 0;
+            if (!row.STD_ITEM_NAME || !row.REPORT_DATE || !row.AMOUNT) return;
+            
+            let year;
+            const dateStr = row.REPORT_DATE;
+            
+            if (dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                year = new Date(dateStr).getFullYear();
+            } else if (dateStr.match(/^\d{4}$/)) {
+                year = parseInt(dateStr);
+            } else if (dateStr.match(/^\d{4}年$/)) {
+                year = parseInt(dateStr);
+            } else {
+                console.warn('未知的日期格式:', dateStr);
+                return;
+            }
+            
+            const amount = parseFloat(row.AMOUNT.replace(/,/g, '')) || 0;
             
             if (!items[row.STD_ITEM_NAME]) {
                 items[row.STD_ITEM_NAME] = {
@@ -164,114 +211,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return Object.values(items);
     }
-    
-    // 更新顯示
-    function updateDisplay(stockCode) {
-        const stockData = financialData[stockCode];
-        if (!stockData) return;
-        
-        updateTable('balance_sheet', stockData.balance_sheet);
-        updateTable('income_statement', stockData.income_statement);
-        updateTable('cash_flow', stockData.cash_flow);
-    }
-    
-    // 更新表格顯示
-    function updateTable(tableId, data) {
-        const tableDiv = document.getElementById(tableId);
-        
-        if (!data || data.length === 0) {
-            tableDiv.innerHTML = '<p>暫無數據</p>';
-            return;
-        }
-        
-        // 提取所有年份列
-        const years = [];
-        data.forEach(row => {
-            Object.keys(row).forEach(key => {
-                if (key !== 'STD_ITEM_NAME' && !years.includes(key)) {
-                    years.push(key);
-                }
-            });
-        });
-        years.sort();
-        
-        // 生成HTML表格
-        let html = '<div class="data-table"><table><thead><tr><th>項目</th>';
-        years.forEach(year => html += `<th>${year}</th>`);
-        html += '</tr></thead><tbody>';
-        
-        data.forEach(row => {
-            html += `<tr><td>${row.STD_ITEM_NAME}</td>`;
-            years.forEach(year => {
-                html += `<td class="amount">${row[year] || '-'}</td>`;
-            });
-            html += '</tr>';
-        });
-        
-        html += '</tbody></table></div>';
-        tableDiv.innerHTML = html;
-    }
-    
-    // 聊天功能
-    function sendMessage() {
-        const message = chatInput.value.trim();
-        if (!message) return;
-        
-        addMessage(message, 'user');
-        chatInput.value = '';
-        
-        // 顯示"正在思考"消息
-        const thinkingMsg = addMessage('正在分析...', 'ai');
-        
-        // 模擬AI響應
-        setTimeout(() => {
-            // 替換為實際的AI分析結果
-            const response = generateAnalysisResponse(message);
-            
-            // 移除"正在思考"消息，添加實際響應
-            thinkingMsg.remove();
-            addMessage(response, 'ai');
-        }, 1500);
-    }
-    
-    // 添加消息到聊天窗口
-    function addMessage(text, sender) {
-        const container = document.getElementById('chat-container');
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${sender}-message`;
-        messageDiv.textContent = text;
-        container.appendChild(messageDiv);
-        container.scrollTop = container.scrollHeight;
-        return messageDiv;
-    }
-    
-    // 生成分析響應 (簡化版)
-    function generateAnalysisResponse(question) {
-        const stockCode = stockSelect.value;
-        const stockData = financialData[stockCode];
-        
-        // 這裡應該是調用AI API的地方
-        // 以下是模擬響應
-        
-        if (question.includes('營業額') || question.includes('收入')) {
-            if (stockData && stockData.income_statement) {
-                const revenueData = stockData.income_statement.find(item => 
-                    item.STD_ITEM_NAME.includes('營業收入') || item.STD_ITEM_NAME.includes('營業額')
-                );
-                
-                if (revenueData) {
-                    const years = Object.keys(revenueData).filter(k => k !== 'STD_ITEM_NAME').sort();
-                    if (years.length >= 2) {
-                        const firstYear = years[0];
-                        const lastYear = years[years.length - 1];
-                        const growth = ((revenueData[lastYear] - revenueData[firstYear]) / revenueData[firstYear] * 100).toFixed(2);
-                        return `從 ${firstYear} 年到 ${lastYear} 年，營業額增長了 ${growth}%。`;
-                    }
-                }
-            }
-            return "無法計算營業額增長，可能是數據不足。";
-        }
-        
-        return `關於"${question}"的分析結果將顯示在這裡。在完整實現中，這裡會調用AI API進行實際分析。`;
-    }
+
+    // ... 其他不变代码 ...
 });
